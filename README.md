@@ -1,7 +1,7 @@
 # Trelloyes Server
 
 ## General Description
-This server is intended as a tool to learn Node.js, Express, testing with Mocha and Chai, implementing CORS for an Express project, adding security with Helmet, and modularization of server endpoints.  
+This server is intended as a tool to learn Node.js, Express, testing with Mocha and Chai, implementing CORS for an Express project, adding security with Helmet, and using route parameters to facilitate modularization of server endpoints.  
 
 ## Technology used
 This project uses Node.js, Express, Morgan, Nodemon, and Winston. 
