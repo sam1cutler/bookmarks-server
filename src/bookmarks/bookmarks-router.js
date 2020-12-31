@@ -10,9 +10,7 @@ const bodyParser = express.json();
 bookmarksRouter
     .route('/bookmarks')
     
-    .get( (req, res, next) => {
-        //res.json(bookmarksList);
-        
+    .get( (req, res, next) => {      
         const knexInstance = req.app.get('db');
         BookmarksService.getAllBookmarks(knexInstance)
             .then(bookmarks => {
@@ -65,19 +63,20 @@ bookmarksRouter
 
 bookmarksRouter
     .route('/bookmarks/:bookmarkId')
-    .get( (req, res) => {
-        const { bookmarkId } = req.params;
-        const bookmark = bookmarksList.find( bookmark => bookmark.id == bookmarkId )
+    .get( (req, res, next) => {
+        const knexInstance = req.app.get('db');
 
-        // Confirm bookmark exists
-        if (!bookmark) {
-            logger.error(`Could not find a bookmark with the id '${bookmarkId}'.`);
-            return res
-                .status(404)
-                .send('Bookmark not found.')
-        }
-
-        res.json(bookmark);
+        BookmarksService.getById(knexInstance, req.params.bookmarkId)
+            .then(bookmark => {
+                if (!bookmark) {
+                    logger.error(`Could not find a bookmark with the id '${bookmarkId}'.`)
+                    return res
+                        .status(404)
+                        .send('Bookmark not found.')
+                }
+                res.json(bookmark);
+            })
+            .catch(next)
     })
     .delete( (req, res) => {
         const { bookmarkId } = req.params;
