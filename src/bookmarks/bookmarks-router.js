@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 // const { v4: uuid } = require('uuid');
 const { isWebUri } = require('valid-url');
@@ -70,7 +71,7 @@ bookmarksRouter
                 logger.info(`Bookmark with id ${bookmark.id} was created.`);
                 res
                     .status(201)
-                    .location(`bookmarks/${bookmark.id}`)
+                    .location(path.posix.join(req.originalUrl, `/${bookmark.id}`))
                     .json(serializeBookmark(bookmark))
             })
             .catch(next)
@@ -107,6 +108,29 @@ bookmarksRouter
         )
             .then( () => {
                 logger.info(`Bookmark with id '${req.params.bookmarkId}' deleted.`);
+                res.status(204).end()
+            })
+            .catch(next)
+    })
+    .patch(bodyParser, (req, res, next) => {
+        const { title, url, description, rating } = req.body;
+        const bookmarkUpdatedContent = { title, url, description, rating };
+
+        const numberOfValues = Object.values(bookmarkUpdatedContent).filter(Boolean).length;
+        if (numberOfValues === 0) {
+            return res
+                .status(400)
+                .json({
+                    error: { message: `Request body must contain at least one of 'title, 'url', or 'rating'.`}
+                })
+        }
+
+        BookmarksService.updateBookmark(
+            req.app.get('db'),
+            req.params.bookmarkId,
+            bookmarkUpdatedContent
+        )
+            .then( () => {
                 res.status(204).end()
             })
             .catch(next)

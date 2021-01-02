@@ -24,7 +24,7 @@ app.get('/', (req, res) => {
     res.send('Howdy, pardner.');
 })
 
-app.use('/bookmarks', bookmarksRouter);
+app.use('/api/bookmarks', bookmarksRouter);
 
 app.use(errorHandler);
 
