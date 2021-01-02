@@ -7,7 +7,6 @@ const { NODE_ENV } = require('./config');
 const validateBearerToken = require('./validate-bearer-token');
 const errorHandler = require('./error-handler');
 const bookmarksRouter = require('./bookmarks/bookmarks-router');
-const BookmarksService = require('./bookmarks-service');
 
 const app = express();
 
@@ -25,18 +24,7 @@ app.get('/', (req, res) => {
     res.send('Howdy, pardner.');
 })
 
-/*
-app.get('/bookmarks', (req, res, next) => {
-    const knexInstance = req.app.get('db')
-    BookmarksService.getAllBookmarks(knexInstance)
-        .then(bookmarks => {
-            res.json(bookmarks)
-        })
-        .catch(next)
-})
-*/
-
-app.use(bookmarksRouter);
+app.use('/bookmarks', bookmarksRouter);
 
 app.use(errorHandler);
 

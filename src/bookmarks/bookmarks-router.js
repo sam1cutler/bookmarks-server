@@ -2,85 +2,98 @@ const express = require('express');
 const { v4: uuid } = require('uuid');
 const logger = require('../logger');
 const { bookmarksList } = require('../store');
-const BookmarksService = require('../bookmarks-service');
+const xss = require('xss');
+const BookmarksService = require('./bookmarks-service');
 
 const bookmarksRouter = express.Router();
 const bodyParser = express.json();
 
+const serializeBookmark = bookmark => ({
+    id: bookmark.id,
+    title: xss(bookmark.title),
+    url: xss(bookmark.url),
+    description: xss(bookmark.description),
+    rating: bookmark.rating,
+})
+
 bookmarksRouter
-    .route('/bookmarks')
-    
+    .route('/')
     .get( (req, res, next) => {      
         const knexInstance = req.app.get('db');
         BookmarksService.getAllBookmarks(knexInstance)
             .then(bookmarks => {
-                res.json(bookmarks)
+                res.json(bookmarks.map(serializeBookmark))
             })
             .catch(next);
     })
-    
-    .post(bodyParser, (req, res) => {
+    .post(bodyParser, (req, res, next) => {
         const { title, url, description, rating } = req.body;
+        const newBookmark = { title, url, description, rating }
 
         // Confirm required fields are present
-        if (!title) {
-            logger.error('Title is required.');
-            return res
-                .status(400)
-                .send('Invalid submission.');
-        }
-        if (!url) {
-            logger.error('URL is required.');
-            return res
-                .status(400)
-                .send('Invalid submission.');
-        }
-        if (!rating) {
-            logger.error('Rating is required.');
-            return res
-                .status(400)
-                .send('Invalid submission.');
+        for (const [key, value] of Object.entries(newBookmark)) {
+            if (value === null) {
+                logger.error(`'${value}' is required.`);
+                return res
+                    .status(400)
+                    .json({
+                        error: { message: `'${value}' is required in request body.` }
+                    })
+            }
         }
 
+        /*
         const id = uuid();
-
         const newBookmark = {
             id,
             title,
             url,
             description,
             rating
-        };
+        };     
         bookmarksList.push(newBookmark);
+        */
 
-        logger.info(`Bookmark with id ${id} was created.`);
-
-        res
-            .status(201)
-            .location(`http://localhost:8000/bookmarks/${id}`)
-            .json(newBookmark);
+        BookmarksService.insertBookmark(
+            req.app.get('db'),
+            newBookmark
+        )
+            .then(bookmark => {
+                logger.info(`Bookmark with id ${bookmark.id} was created.`);
+                res
+                    .status(201)
+                    .location(`bookmarks/${bookmark.id}`)
+                    .json(serializeBookmark(bookmark))
+            })
     });
 
 bookmarksRouter
-    .route('/bookmarks/:bookmarkId')
-    .get( (req, res, next) => {
+    .route('/:bookmarkId')
+    .all( (req, res, next) => {
+        const { bookmarkId } = req.params
         const knexInstance = req.app.get('db');
 
-        BookmarksService.getById(knexInstance, req.params.bookmarkId)
+        BookmarksService.getById(knexInstance, bookmarkId)
             .then(bookmark => {
                 if (!bookmark) {
                     logger.error(`Could not find a bookmark with the id '${bookmarkId}'.`)
                     return res
                         .status(404)
-                        .send('Bookmark not found.')
+                        .json({
+                            error: { message: `Bookmark not found.` }
+                        })
                 }
-                res.json(bookmark);
+                res.bookmark = bookmark
+                next()
             })
             .catch(next)
     })
+    .get( (req, res, next) => {
+        res.json(serializeBookmark(res.bookmark))
+    })
     .delete( (req, res) => {
-        const { bookmarkId } = req.params;
-        const bookmarkIndex = bookmarksList.findIndex( bookmark => bookmark.id == bookmarkId )
+        // const { bookmarkId } = req.params;
+        // const bookmarkIndex = bookmarksList.findIndex( bookmark => bookmark.id == bookmarkId )
 
         // Confirm bookmark exists
         if (bookmarkIndex === -1) {

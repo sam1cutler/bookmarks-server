@@ -1,5 +1,3 @@
-const { getById } = require("../../knex-practice/src/articles-service");
-
 const BookmarksService = {
     
     getAllBookmarks(knex) {

@@ -70,12 +70,12 @@ describe('Bookmarks Endpoints', function() {
             });
         });
         context('Given no bookmarks in the database', () => {
-            it.skip('responds with 404', () => {
+            it('responds with 404 and error message', () => {
                 //const bookmarkId = 35;
                 return supertest(app)
                     .get(`/bookmarks/35`)
                     .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
-                    .expect(404, 'Bookmark not found.');
+                    .expect(404, { error: { message: 'Bookmark not found.' } } );
             });
         });
     });
