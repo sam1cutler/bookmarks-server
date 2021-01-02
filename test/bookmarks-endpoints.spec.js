@@ -78,6 +78,63 @@ describe('Bookmarks Endpoints', function() {
                     .expect(404, { error: { message: 'Bookmark not found.' } } );
             });
         });
+        context(`Given an XSS attack bookmark`, () => {
+            const maliciousBookmark = {
+                id: 666,
+                title: 'Bad news bears <script>alert("xss");</script>',
+                url: 'http://bad.news.bears',
+                description: `Bad image <img src="https://url.to.file.which/does-not.exist" onerror="alert(document.cookie);">. But not <strong>all</strong> bad.`,
+                rating: 4
+            }
+
+            beforeEach('insert malicious bookmark', () => {
+                return db
+                    .into('bookmarks')
+                    .insert( [maliciousBookmark] )
+            })
+
+            it('removes XSS attack content', () => {
+                return supertest(app)
+                    .get(`/bookmarks/${maliciousBookmark.id}`)
+                    .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+                    .expect(200)
+                    .expect(res => {
+                        expect(res.body.title).to.eql(`Bad news bears &lt;script&gt;alert("xss");&lt;/script&gt;`)
+                        expect(res.body.description).to.eql(`Bad image <img src=\"https://url.to.file.which/does-not.exist\">. But not <strong>all</strong> bad.`)
+                    })
+            })
+        })
     });
+
+    describe('POST /bookmarks', () => {
+        it(`creates a book, responding with 201 and the new bookmark`, function() {
+            const newBookmark = {
+                id: 511,
+                title: 'New bookmark title',
+                url: 'http://www.new-site.biz',
+                description: `Stupid nonsense that doesn't need to exist`,
+                rating: 2
+            }
+            return supertest(app)
+                .post('/bookmarks')
+                .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+                .send(newBookmark)
+                .expect(res => {
+                    console.log(res.body)
+                    expect(res.body.title).to.eql(newBookmark.title)
+                    expect(res.body.url).to.eql(newBookmark.url)
+                    expect(res.body.description).to.eql(newBookmark.description)
+                    expect(res.body.title).to.eql(newBookmark.title)
+                    expect(res.body).to.have.property('id')
+                    expect(res.headers.location).to.eql(`bookmarks/${res.body.id}`)
+                })
+                .then(postRes => 
+                    supertest(app)
+                        .get(`/bookmarks/${postRes.body.id}`)
+                        .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
+                        .expect(postRes.body)
+                )
+        })
+    })
 
 });

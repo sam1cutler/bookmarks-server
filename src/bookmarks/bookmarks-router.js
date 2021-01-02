@@ -1,5 +1,6 @@
 const express = require('express');
 // const { v4: uuid } = require('uuid');
+const { isWebUri } = require('valid-url');
 const logger = require('../logger');
 const xss = require('xss');
 const BookmarksService = require('./bookmarks-service');
@@ -12,7 +13,7 @@ const serializeBookmark = bookmark => ({
     title: xss(bookmark.title),
     url: xss(bookmark.url),
     description: xss(bookmark.description),
-    rating: bookmark.rating,
+    rating: Number(bookmark.rating),
 })
 
 bookmarksRouter
@@ -26,20 +27,40 @@ bookmarksRouter
             .catch(next);
     })
     .post(bodyParser, (req, res, next) => {
-        const { title, url, description, rating } = req.body;
-        const newBookmark = { title, url, description, rating }
-
         // Confirm required fields are present
-        for (const [key, value] of Object.entries(newBookmark)) {
-            if (value === null) {
-                logger.error(`'${value}' is required.`);
+        for (const field of ['title', 'url', 'rating']) {
+            if (!req.body[field]) {
+                logger.error(`'${field}' is required.`);
                 return res
                     .status(400)
                     .json({
-                        error: { message: `'${value}' is required in request body.` }
+                        error: { message: `'${field}' is required in request body.` }
                     })
             }
         }
+
+        // Check validity of rating and URL
+        const { title, url, description, rating } = req.body;
+        
+        const ratingValue = Number(rating);
+
+        if (!Number.isInteger(ratingValue) || ratingValue < 0 || ratingValue > 5) {
+            logger.error(`Invalid rating of '${rating}' was submitted.`)
+            return res.status(400).send({
+                error: { message: `Rating must be an integer between 0 and 5.`}
+            })
+        }
+
+        if (!isWebUri(url)) {
+            logger.error(`Invalid url of '${url}' was provided.`);
+            return res
+                .status(400)
+                .send({
+                    error: { message: `'url' must be valid.`}
+                })
+        }
+        
+        const newBookmark = { title, url, description, rating }
 
         BookmarksService.insertBookmark(
             req.app.get('db'),
@@ -52,6 +73,7 @@ bookmarksRouter
                     .location(`bookmarks/${bookmark.id}`)
                     .json(serializeBookmark(bookmark))
             })
+            .catch(next)
     });
 
 bookmarksRouter
@@ -75,7 +97,7 @@ bookmarksRouter
             })
             .catch(next)
     })
-    .get( (req, res, next) => {
+    .get( (req, res) => {
         res.json(serializeBookmark(res.bookmark))
     })
     .delete( (req, res, next) => {
