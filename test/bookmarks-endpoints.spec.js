@@ -71,9 +71,9 @@ describe('Bookmarks Endpoints', function() {
         });
         context('Given no bookmarks in the database', () => {
             it('responds with 404 and error message', () => {
-                //const bookmarkId = 35;
+                const bookmarkId = 35;
                 return supertest(app)
-                    .get(`/bookmarks/35`)
+                    .get(`/bookmarks/${bookmarkId}`)
                     .set('Authorization', `Bearer ${process.env.API_TOKEN}`)
                     .expect(404, { error: { message: 'Bookmark not found.' } } );
             });
